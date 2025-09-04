@@ -25,7 +25,7 @@ async def get_random_username():
 # 创建SocketIO服务器
 sio = socketio.AsyncServer(
     async_mode='asgi', 
-    cors_allowed_origins=["http://localhost:5173", "*"],
+    cors_allowed_origins=["http://localhost:3000", "*"],
     logger=True,
     engineio_logger=True
 )

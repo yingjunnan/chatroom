@@ -181,16 +181,13 @@ export default {
   height: auto;
   min-height: 80vh;
   max-height: 90vh;
-  width: 90vw;
-  max-width: 1600px;
+  width: 95%;
+  max-width: 1400px;
   margin: 0 auto;
   background-color: #f8f9fa;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-  position: relative;
-  left: -150px;
-  transform: none;
 }
 
 .chat-header {

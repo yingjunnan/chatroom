@@ -86,8 +86,13 @@ body {
 .app-container {
   min-height: 100vh;
   padding: 2rem;
-  max-width: 1600px;
+  max-width: 100vh;
+  width: 100vh;
   margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
 }
 
 @media (max-width: 768px) {
