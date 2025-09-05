@@ -4,6 +4,7 @@ import socketio
 import uvicorn
 import uuid
 from typing import Dict, List, Optional
+from datetime import datetime
 
 # 创建FastAPI应用
 app = FastAPI(title="聊天室后端服务")
@@ -33,7 +34,7 @@ socket_app = socketio.ASGIApp(sio, app)
 
 # 存储用户和房间信息
 users = {}
-rooms = {}
+rooms = {}  # 格式: {room_id: {"users": [], "messages": [], "password": str, "created_at": str}}
 
 # 生成随机用户名
 def generate_username() -> str:
@@ -54,9 +55,15 @@ def generate_username() -> str:
     return random.choice(classic_names)
 
 # 创建房间
-def create_room() -> str:
+def create_room(password: str = None) -> str:
+    import datetime
     room_id = uuid.uuid4().hex[:8]
-    rooms[room_id] = {"users": [], "messages": []}
+    rooms[room_id] = {
+        "users": [], 
+        "messages": [], 
+        "password": password,
+        "created_at": datetime.datetime.now().isoformat()
+    }
     return room_id
 
 # SocketIO连接事件
@@ -78,7 +85,8 @@ async def create_room_event(sid, data):
         await sio.emit("error", {"message": "用户未注册"}, to=sid)
         return
     
-    room_id = create_room()
+    password = data.get("password", None)
+    room_id = create_room(password)
     users[sid]["room"] = room_id
     rooms[room_id]["users"].append(sid)
     
@@ -93,8 +101,16 @@ async def join_room_event(sid, data):
         return
     
     room_id = data.get("room_id")
+    password = data.get("password", None)
+    
     if not room_id or room_id not in rooms:
         await sio.emit("error", {"message": "房间不存在"}, to=sid)
+        return
+    
+    # 验证房间密码
+    room_password = rooms[room_id].get("password")
+    if room_password and room_password != password:
+        await sio.emit("error", {"message": "房间密码错误"}, to=sid)
         return
     
     # 检查用户是否已经在房间中
@@ -124,7 +140,12 @@ async def join_room_event(sid, data):
     
     # 通知房间其他人有新用户加入
     username = users[sid]["username"]
-    join_message = {"type": "system", "content": f"{username} 加入了房间"}
+    join_message = {
+        "type": "system", 
+        "content": f"{username} 加入了房间",
+        "timestamp": datetime.now().isoformat(),
+        "id": str(uuid.uuid1())
+    }
     rooms[room_id]["messages"].append(join_message)
     
     # 发送房间用户列表
@@ -166,7 +187,8 @@ async def send_message(sid, data):
         "type": "user",
         "username": username,
         "content": content,
-        "timestamp": str(uuid.uuid1())  # 使用时间戳作为消息ID
+        "timestamp": datetime.now().isoformat(),
+        "id": str(uuid.uuid1())  # 消息ID
     }
     
     rooms[room_id]["messages"].append(message)
@@ -189,7 +211,12 @@ async def disconnect(sid):
                 del rooms[room_id]
             else:
                 # 通知房间其他人该用户离开
-                leave_message = {"type": "system", "content": f"{username} 离开了房间"}
+                leave_message = {
+                    "type": "system", 
+                    "content": f"{username} 离开了房间",
+                    "timestamp": datetime.now().isoformat(),
+                    "id": str(uuid.uuid1())
+                }
                 rooms[room_id]["messages"].append(leave_message)
                 
                 # 更新房间用户列表
@@ -211,7 +238,16 @@ async def health_check():
 # 获取所有房间API
 @app.get("/rooms")
 async def get_rooms():
-    return {"rooms": list(rooms.keys())}
+    room_list = []
+    for room_id, room_data in rooms.items():
+        room_info = {
+            "room_id": room_id,
+            "user_count": len(room_data["users"]),
+            "has_password": room_data["password"] is not None,
+            "created_at": room_data["created_at"]
+        }
+        room_list.append(room_info)
+    return {"rooms": room_list}
 
 if __name__ == "__main__":
     uvicorn.run(socket_app, host="0.0.0.0", port=8000)

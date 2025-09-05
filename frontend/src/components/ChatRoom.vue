@@ -29,9 +29,11 @@
       >
         <div class="message-header" v-if="message.type === 'user'">
           <span class="message-username">{{ message.username }}</span>
+          <span v-if="message.timestamp" class="timestamp">{{ formatTimestamp(message.timestamp) }}</span>
         </div>
         <div class="message-content">
           {{ message.content }}
+          <span v-if="message.type === 'system' && message.timestamp" class="timestamp">{{ formatTimestamp(message.timestamp) }}</span>
         </div>
       </div>
     </div>
@@ -51,6 +53,7 @@
 <script>
 import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import socketService from '../services/socketService';
+import { useTheme } from '../composables/useTheme';
 
 export default {
   name: 'ChatRoom',
@@ -72,9 +75,13 @@ export default {
     const roomUsers = ref([]);
     const messageSound = ref(null);
     
-    // 初始化提示音
+    // 初始化主题
+    const { loadTheme } = useTheme();
+    
+    // 初始化提示音和主题
     onMounted(() => {
       messageSound.value = new Audio('/sounds/new-notification.mp3');
+      loadTheme();
     });
     
     // 滚动到最新消息
@@ -161,6 +168,23 @@ export default {
       // 清理不需要的事件监听器
     });
     
+    // 格式化时间戳
+    const formatTimestamp = (timestamp) => {
+      if (!timestamp) return '';
+      
+      const date = new Date(timestamp);
+      
+      // 检查日期是否有效
+      if (isNaN(date.getTime())) {
+        return '';
+      }
+      
+      return date.toLocaleTimeString('zh-CN', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+    };
+    
     return {
       messages,
       newMessage,
@@ -168,7 +192,8 @@ export default {
       roomUsers,
       messageSound,
       sendMessage,
-      leaveRoom
+      leaveRoom,
+      formatTimestamp
     };
   }
 };
@@ -195,7 +220,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.5rem;
-  background-color: #4CAF50;
+  background-color: var(--theme-primary);
   color: white;
 }
 
@@ -252,23 +277,56 @@ export default {
   max-width: 90%;
 }
 
+.message-system .timestamp {
+  display: block;
+  font-size: 0.7rem;
+  margin-top: 0.25rem;
+  opacity: 0.7;
+  font-style: normal;
+}
+
 .message-self {
   align-self: flex-end;
-  background-color: #4CAF50;
+  background-color: var(--theme-primary);
   color: white;
 }
 
 .message-other {
   align-self: flex-start;
-  background-color: #e9ecef;
-  color: #333;
+  background-color: #f8f9fa;
+  color: #212529;
+  border: 1px solid #e9ecef;
+}
+
+.message-content {
+  line-height: 1.4;
+  font-size: 0.95rem;
 }
 
 .message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   text-align: left;
   margin-bottom: 0.25rem;
   font-size: 0.85rem;
-  opacity: 0.8;
+}
+
+.message-username {
+  font-weight: 600;
+  color: #2c3e50;
+  opacity: 0.9;
+}
+
+.message-self .message-username {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 700;
+}
+
+.timestamp {
+  font-size: 0.75rem;
+  opacity: 0.6;
+  margin-left: 0.5rem;
 }
 
 .chat-input {
@@ -289,7 +347,7 @@ export default {
 
 .btn-send {
   padding: 0.75rem 1.5rem;
-  background-color: #4CAF50;
+  background-color: var(--theme-primary);
   color: white;
   border: none;
   border-radius: 4px;
@@ -298,7 +356,7 @@ export default {
 }
 
 .btn-send:hover {
-  background-color: #3e8e41;
+  background-color: var(--theme-primaryHover);
 }
 
 .btn-send:disabled {

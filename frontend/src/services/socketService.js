@@ -102,17 +102,21 @@ class SocketService {
   }
 
   // 创建房间
-  createRoom() {
+  createRoom(password = null) {
     if (!this.connected || !this.username) {
       console.error('Not connected or not registered');
       return;
     }
 
-    this.socket.emit('create_room_event', {});
+    const data = {};
+    if (password) {
+      data.password = password;
+    }
+    this.socket.emit('create_room_event', data);
   }
 
   // 加入房间
-  joinRoom(roomId) {
+  joinRoom(roomId, password = null) {
     if (!this.connected || !this.username) {
       console.error('Not connected or not registered');
       return;
@@ -121,7 +125,11 @@ class SocketService {
     // 设置当前房间ID
     this.roomId = roomId;
     
-    this.socket.emit('join_room_event', { room_id: roomId });
+    const data = { room_id: roomId };
+    if (password) {
+      data.password = password;
+    }
+    this.socket.emit('join_room_event', data);
   }
 
   // 发送消息
@@ -142,7 +150,15 @@ class SocketService {
       this.connected = false;
       this.username = null;
       this.roomId = null;
+      this.callbacks = {}; // 清除所有回调
     }
+  }
+
+  // 清除用户数据
+  clearUserData() {
+    this.username = null;
+    this.roomId = null;
+    this.callbacks = {}; // 清除所有回调
   }
 
   // 注册回调函数
@@ -192,6 +208,18 @@ class SocketService {
     
     // 发送获取用户列表请求
     this.socket.emit('get_room_users');
+  }
+  
+  // 获取房间列表
+  async getRoomList() {
+    try {
+      const response = await fetch('http://localhost:8000/rooms');
+      const data = await response.json();
+      return data.rooms || [];
+    } catch (error) {
+      console.error('Failed to fetch room list:', error);
+      return [];
+    }
   }
 }
 
